@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Consumption Tracker - Advanced Analytics</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <!-- Chart.js for Advanced Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* Print Optimization */
+        @media print {
+            body { background-color: white; color: black; }
+            .dark body { background-color: white; color: black; }
+            header, .no-print, #add-section, #tariff-section, .action-column { display: none !important; }
+            main { padding: 0; max-width: 100%; }
+            .lg\:col-span-1, .lg\:col-span-2 { width: 100% !important; grid-column: span 3 !important; }
+            #charts-section { break-inside: avoid; }
+            /* Ensure charts and text are black/high contrast */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+    </style>
+    <!-- Init Theme -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-100 dark:selection:bg-blue-900 transition-colors duration-200">
+
+    <!-- Header -->
+    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-blue-200 shadow-lg dark:shadow-none">
+                    <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800 dark:text-slate-100 leading-none">Energy Tracker</h1>
+                    <p class="text-xs text-blue-600 dark:text-blue-400 font-bold tracking-wide mt-1">ADVANCED ANALYTICS EDITION</p>
+                </div>
+            </div>
+            <div class="flex gap-2 items-center">
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" class="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Toggle Theme">
+                    <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+                <button onclick="toggleModal('aboutModal')" class="hidden sm:flex px-4 py-2 rounded-lg font-medium transition-all duration-200 items-center justify-center gap-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white">
+                    <i data-lucide="info" class="w-4 h-4"></i> About
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Dashboard Top Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Daily Actual -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 border-l-4 border-l-blue-500 transition-colors duration-200">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-semibold mb-1">Daily Avg (Actual)</p>
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100"><span id="daily-kwh">0.00</span> <span class="text-sm font-normal text-slate-400">kWh</span></h3>
+                    </div>
+                    <div class="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg"><i data-lucide="activity" class="w-5 h-5"></i></div>
+                </div>
+            </div>
+
+            <!-- Monthly Actual -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 border-l-4 border-l-indigo-500 transition-colors duration-200">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-semibold mb-1">Monthly Avg (Actual)</p>
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100"><span id="monthly-kwh">0.00</span> <span class="text-sm font-normal text-slate-400">kWh</span></h3>
+                    </div>
+                    <div class="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg"><i data-lucide="calendar" class="w-5 h-5"></i></div>
+                </div>
+            </div>
+
+            <!-- Yearly Forecast -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 border-l-4 border-l-purple-500 transition-colors duration-200">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-semibold mb-1">365-Day Forecast</p>
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100"><span id="yearly-kwh">0.00</span> <span class="text-sm font-normal text-slate-400">kWh</span></h3>
+                    </div>
+                    <div class="p-2 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg"><i data-lucide="trending-up" class="w-5 h-5"></i></div>
+                </div>
+            </div>
+
+            <!-- Yearly Cost -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 border-l-4 border-l-emerald-500 transition-colors duration-200">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-semibold mb-1">Est. Annual Cost</p>
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100">₹<span id="yearly-cost">0.00</span></h3>
+                    </div>
+                    <div class="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg"><i data-lucide="banknote" class="w-5 h-5"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Inputs -->
+            <div class="lg:col-span-1 space-y-6" id="input-column">
+                
+                <!-- Tariff Settings -->
+                <div id="tariff-section" class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 transition-colors duration-200">
+                    <div class="flex items-center gap-2 mb-4 text-slate-800 dark:text-slate-100">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                        <h2 class="font-bold text-lg">Configuration</h2>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
+                        <div class="flex flex-col gap-1.5 w-full">
+                            <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Electricity Tariff (₹ per Unit/kWh)</label>
+                            <input type="number" id="tariff-input" step="0.01" class="px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Appliance Form -->
+                <div id="add-section" class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 transition-colors duration-200">
+                    <div class="flex items-center gap-2 mb-4 text-slate-800 dark:text-slate-100">
+                        <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                        <h2 class="font-bold text-lg">Add Appliance</h2>
+                    </div>
+                    
+                    <form id="add-form" class="space-y-4">
+                        <div class="flex flex-col gap-1.5 w-full">
+                            <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Appliance Name</label>
+                            <input type="text" id="app-name" placeholder="e.g. Ceiling Fan" required class="px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="flex flex-col gap-1.5 w-full">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Qty</label>
+                                <input type="number" id="app-quantity" value="1" min="1" required class="px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                            </div>
+                            <div class="flex flex-col gap-1.5 w-full">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Wattage (W)</label>
+                                <input type="number" id="app-watts" placeholder="e.g. 75" required class="px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                            </div>
+                            <div class="flex flex-col gap-1.5 w-full">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Hours/Day</label>
+                                <input type="number" id="app-hours" step="0.5" max="24" placeholder="e.g. 8" required class="px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                             <button type="submit" class="w-full bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 active:scale-95">
+                                Add to List
+                             </button>
+                        </div>
+                    </form>
+
+                    <!-- Quick Presets -->
+                    <div class="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick Fill</p>
+                        <div class="flex flex-wrap gap-2" id="quick-fill-container"></div>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <button onclick="handleLoadSample()" class="w-full text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-slate-800 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium">
+                            <i data-lucide="box-select" class="w-4 h-4"></i> Load Typical Home
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Appliance List (Compact) -->
+                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors duration-200">
+                    <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                        <h2 class="font-bold text-sm uppercase tracking-wide text-slate-600 dark:text-slate-300">Appliances</h2>
+                        <button id="clear-all-btn" class="hidden text-xs text-red-500 hover:text-red-600 font-medium">Clear All</button>
+                    </div>
+                    <div class="max-h-[300px] overflow-y-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <tbody id="appliance-list-body" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Advanced Visualization -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Main Analytics Card -->
+                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 transition-colors duration-200" id="charts-section">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                            <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                            <h2 class="font-bold text-lg">365-Day Comparative Analytics</h2>
+                        </div>
+                        <div class="flex gap-2">
+                             <button onclick="handlePrint()" class="text-xs px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded text-slate-600 dark:text-slate-300">Save PDF</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Chart 1: Trend Analysis (Monthly) -->
+                    <div class="mb-8">
+                        <h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3">Actual vs Ideal Consumption Trend (Monthly)</h3>
+                        <div class="relative h-64 w-full">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                        <!-- Chart 2: Efficiency (Usage vs Idle) -->
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 text-center">Efficiency: Active vs. Idle Waste</h3>
+                            <div class="relative h-48 w-full flex justify-center">
+                                <canvas id="efficiencyChart"></canvas>
+                            </div>
+                            <p class="text-xs text-center mt-2 text-slate-400 italic">"Idle Energy" represents standby/phantom power when devices are plugged in but off.</p>
+                        </div>
+
+                        <!-- Chart 3: Cost Comparison -->
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 text-center">Cost Comparison (Annual)</h3>
+                            <div class="relative h-48 w-full">
+                                <canvas id="costChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Details -->
+                <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4 text-sm text-blue-800 dark:text-blue-300">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="info" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+                        <div>
+                            <p class="font-bold mb-1">About the Simulation Model</p>
+                            <p class="opacity-80 leading-relaxed">
+                                This Advanced Tracker uses a stochastic model to simulate 365 days of usage.
+                                <br>• <strong>Ideal Energy:</strong> Based on your strict inputs (perfect efficiency).
+                                <br>• <strong>Actual Energy:</strong> Includes random daily variance (±10%) and Standby/Idle power loss (approx. 5% of wattage during non-use hours).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- About Modal -->
+    <div id="aboutModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
+        <div class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all border dark:border-slate-700">
+            <div class="bg-blue-600 p-6 text-white relative">
+                <button onclick="toggleModal('aboutModal')" class="absolute top-4 right-4 text-blue-100 hover:text-white bg-blue-500/30 hover:bg-blue-500/50 p-1 rounded-full transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+                <h2 class="text-2xl font-bold mb-1">Energy Consumption Tracker</h2>
+                <p class="text-blue-100 text-sm">Department of Computer Science and Engineering</p>
+            </div>
+            <div class="p-6">
+                <h3 class="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">Project Team</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800"><span>Romya (08)</span><span class="text-blue-600 dark:text-blue-400">romya1803@gmail.com</span></div>
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800"><span>N Punith (05)</span><span class="text-blue-600 dark:text-blue-400">punithnpunith1@gmail.com</span></div>
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800"><span>Manish Jha (06)</span><span class="text-blue-600 dark:text-blue-400">Realmanish96@gmail.com</span></div>
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800"><span>Sanjana GS (07)</span><span class="text-blue-600 dark:text-blue-400">gssanjana27@gmail.com</span></div>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold">Project Guide</p>
+                        <p class="text-slate-800 dark:text-slate-200 font-medium">Prof. Anitha M</p>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <button onclick="toggleModal('aboutModal')" class="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-lg font-medium transition-all duration-200">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // --- State Management ---
+        const DEFAULT_TARIFF = 7.50;
+        let state = {
+            tariff: DEFAULT_TARIFF,
+            appliances: []
+        };
+        let charts = {}; // Store chart instances
+
+        // --- Constants ---
+        const PRESETS = [
+            { name: 'Ceiling Fan', watts: 75 },
+            { name: 'LED Bulb', watts: 9 },
+            { name: 'Refrigerator', watts: 150 },
+            { name: 'TV', watts: 100 },
+            { name: 'AC (1.5 Ton)', watts: 1500 },
+            { name: 'Laptop', watts: 65 }
+        ];
+
+        const SAMPLE_HOME_DATA = [
+            { name: 'Living Room Fan', watts: 75, hours: 12, quantity: 1 },
+            { name: 'Bedroom Fan', watts: 75, hours: 8, quantity: 2 },
+            { name: 'Tube Light (Living)', watts: 20, hours: 6, quantity: 2 },
+            { name: 'LED Bulb (Kitchen)', watts: 9, hours: 4, quantity: 2 },
+            { name: 'Refrigerator', watts: 150, hours: 24, quantity: 1 },
+            { name: 'Television', watts: 100, hours: 4, quantity: 1 },
+            { name: 'Washing Machine', watts: 500, hours: 1, quantity: 1 }
+        ];
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderPresets();
+            renderApp();
+            
+            // Event Listeners
+            document.getElementById('tariff-input').addEventListener('input', handleTariffChange);
+            document.getElementById('add-form').addEventListener('submit', handleAddAppliance);
+            document.getElementById('clear-all-btn').addEventListener('click', handleClearAll);
+
+            lucide.createIcons();
+        });
+
+        // --- Persistence ---
+        function loadState() {
+            const savedData = localStorage.getItem('energyTrackerData');
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    state.tariff = parsed.tariff || DEFAULT_TARIFF;
+                    state.appliances = (parsed.appliances || []).map(a => ({ ...a, quantity: a.quantity || 1 }));
+                } catch (e) { console.error("Failed to load data", e); }
+            }
+            document.getElementById('tariff-input').value = state.tariff;
+        }
+
+        function saveState() {
+            localStorage.setItem('energyTrackerData', JSON.stringify(state));
+            renderApp();
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            renderAnalytics(); // Re-render charts for theme colors
+        }
+
+        // --- Core Logic ---
+        function handleTariffChange(e) { state.tariff = parseFloat(e.target.value) || 0; saveState(); }
+
+        function handleAddAppliance(e) {
+            e.preventDefault();
+            const name = document.getElementById('app-name').value;
+            const quantity = document.getElementById('app-quantity').value;
+            const watts = document.getElementById('app-watts').value;
+            const hours = document.getElementById('app-hours').value;
+
+            if (!name || !watts || !hours || !quantity) return;
+
+            addApplianceToState(name, parseFloat(watts), parseFloat(hours), parseInt(quantity));
+            
+            // Reset Form
+            document.getElementById('app-name').value = '';
+            document.getElementById('app-quantity').value = '1';
+            document.getElementById('app-watts').value = '';
+            document.getElementById('app-hours').value = '';
+            
+            saveState();
+        }
+
+        function addApplianceToState(name, watts, hours, quantity = 1) {
+            const newItem = {
+                id: Date.now() + Math.random(),
+                name: name,
+                watts: watts,
+                hours: hours,
+                quantity: quantity,
+                color: `hsl(${Math.random() * 360}, 70%, 50%)`
+            };
+            state.appliances.push(newItem);
+        }
+
+        function handleLoadSample() {
+            if(state.appliances.length > 0) if(!confirm("Add sample appliances?")) return;
+            SAMPLE_HOME_DATA.forEach(item => addApplianceToState(item.name, item.watts, item.hours, item.quantity));
+            saveState();
+        }
+
+        function handleDelete(id) { state.appliances = state.appliances.filter(a => a.id !== id); saveState(); }
+
+        function handleClearAll() { if(confirm("Clear all data?")) { state.appliances = []; saveState(); } }
+
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.toggle('hidden');
+        }
+
+        function populatePreset(name, watts) {
+            document.getElementById('app-name').value = name;
+            document.getElementById('app-watts').value = watts;
+            document.getElementById('app-quantity').value = 1;
+        }
+
+        function handlePrint() { window.print(); }
+
+        // --- 365-Day Simulation Engine ---
+        function runSimulation() {
+            // Arrays to store monthly aggregates
+            const monthlyIdeal = new Array(12).fill(0);
+            const monthlyActual = new Array(12).fill(0);
+            const monthlyIdle = new Array(12).fill(0);
+            
+            let totalYearlyIdeal = 0;
+            let totalYearlyActual = 0;
+
+            // Base calculations per appliance
+            state.appliances.forEach(app => {
+                const dailyIdealKWh = (app.watts * app.quantity * app.hours) / 1000;
+                
+                // Simulate 365 days
+                for (let day = 0; day < 365; day++) {
+                    const monthIndex = Math.floor(day / 30.5) % 12; // Approx month
+                    
+                    // 1. Seasonality & Variance Factor
+                    // Random fluctuation between -10% to +10% to simulate irregular usage
+                    const variance = 0.9 + (Math.random() * 0.2); 
+                    
+                    // 2. Idle/Standby Power Calculation
+                    // Assume device consumes ~5% of rated wattage when "off" but plugged in (phantom load)
+                    const standbyHours = 24 - app.hours;
+                    const standbyKWh = (app.watts * 0.05 * app.quantity * standbyHours) / 1000;
+                    
+                    // 3. Totals
+                    const todaysActual = (dailyIdealKWh * variance) + standbyKWh;
+                    
+                    monthlyIdeal[monthIndex] += dailyIdealKWh;
+                    monthlyActual[monthIndex] += todaysActual;
+                    monthlyIdle[monthIndex] += standbyKWh;
+
+                    totalYearlyIdeal += dailyIdealKWh;
+                    totalYearlyActual += todaysActual;
+                }
+            });
+
+            return {
+                monthlyIdeal,
+                monthlyActual,
+                monthlyIdle,
+                totalYearlyIdeal,
+                totalYearlyActual
+            };
+        }
+
+        // --- Rendering ---
+        function renderPresets() {
+            const container = document.getElementById('quick-fill-container');
+            container.innerHTML = PRESETS.map(p => `
+                <button onclick="populatePreset('${p.name}', ${p.watts})" 
+                    class="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded border border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                    ${p.name}
+                </button>
+            `).join('');
+        }
+
+        function renderApp() {
+            const listBody = document.getElementById('appliance-list-body');
+            const clearBtn = document.getElementById('clear-all-btn');
+
+            // Render List
+            if (state.appliances.length === 0) {
+                listBody.innerHTML = `<tr><td class="p-4 text-center text-slate-400 text-xs italic">No appliances added.</td></tr>`;
+                clearBtn.classList.add('hidden');
+            } else {
+                clearBtn.classList.remove('hidden');
+                listBody.innerHTML = state.appliances.map(app => `
+                    <tr class="border-b border-slate-50 dark:border-slate-800/50 group hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        <td class="p-3">
+                            <div class="font-medium text-slate-800 dark:text-slate-200">${app.name}</div>
+                            <div class="text-xs text-slate-500">${app.watts}W × ${app.quantity} qty</div>
+                        </td>
+                        <td class="p-3 text-right">
+                            <div class="font-medium text-slate-800 dark:text-slate-200">${app.hours}h</div>
+                            <div class="text-xs text-slate-500">Daily</div>
+                        </td>
+                        <td class="p-3 text-right">
+                            <button onclick="handleDelete(${app.id})" class="text-slate-400 hover:text-red-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            renderAnalytics();
+            lucide.createIcons();
+        }
+
+        function renderAnalytics() {
+            const simulation = runSimulation();
+            
+            // 1. Update Text Stats
+            const avgDailyActual = simulation.totalYearlyActual / 365;
+            const avgMonthlyActual = simulation.totalYearlyActual / 12;
+            const yearlyCost = simulation.totalYearlyActual * state.tariff;
+
+            document.getElementById('daily-kwh').textContent = avgDailyActual.toFixed(2);
+            document.getElementById('monthly-kwh').textContent = avgMonthlyActual.toFixed(2);
+            document.getElementById('yearly-kwh').textContent = simulation.totalYearlyActual.toFixed(0);
+            document.getElementById('yearly-cost').textContent = yearlyCost.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+            // 2. Chart Configurations
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+            Chart.defaults.color = textColor;
+            Chart.defaults.borderColor = gridColor;
+
+            // Helper to destroy old charts
+            const createChart = (id, config) => {
+                if (charts[id]) charts[id].destroy();
+                const ctx = document.getElementById(id).getContext('2d');
+                charts[id] = new Chart(ctx, config);
+            };
+
+            // CHART 1: Trend Analysis (Monthly Ideal vs Actual)
+            createChart('trendChart', {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [
+                        {
+                            label: 'Ideal (Theoretical)',
+                            data: simulation.monthlyIdeal,
+                            borderColor: '#3b82f6', // blue-500
+                            backgroundColor: '#3b82f6',
+                            borderDash: [5, 5],
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Actual (Simulated)',
+                            data: simulation.monthlyActual,
+                            borderColor: '#10b981', // emerald-500
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Energy (kWh)' } } }
+                }
+            });
+
+            // CHART 2: Efficiency (Usage vs Idle) - Aggregated Yearly
+            const totalIdle = simulation.monthlyIdle.reduce((a, b) => a + b, 0);
+            const totalActive = simulation.totalYearlyActual - totalIdle;
+            
+            createChart('efficiencyChart', {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active Usage', 'Idle/Standby Waste'],
+                    datasets: [{
+                        data: [totalActive, totalIdle],
+                        backgroundColor: ['#6366f1', '#f43f5e'], // indigo-500, rose-500
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right' } }
+                }
+            });
+
+            // CHART 3: Cost Comparison (Annual)
+            const idealCost = simulation.totalYearlyIdeal * state.tariff;
+            const actualCost = simulation.totalYearlyActual * state.tariff;
+
+            createChart('costChart', {
+                type: 'bar',
+                data: {
+                    labels: ['Ideal Cost', 'Predicted Actual Cost'],
+                    datasets: [{
+                        label: 'Annual Cost (₹)',
+                        data: [idealCost, actualCost],
+                        backgroundColor: ['#94a3b8', '#f59e0b'], // slate-400, amber-500
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
